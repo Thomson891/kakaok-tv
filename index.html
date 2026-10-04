@@ -1,5 +1,448 @@
-<!DOCTYPE html>
-<html>
-<head><title>Karaoke Testi</title></head>
-<body><h1>Tämä toimii!</h1></body>
+<!doctype html>
+<html lang="fi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KAKAOK-TV v0.8.2</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+      :root {
+        --bg: #0f0f0f;
+        --card: #1e1e1e;
+        --accent: #ff0000;
+        --text: #ffffff;
+      }
+      body {
+        font-family: "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        margin: 0;
+        overflow-x: hidden;
+      }
+
+      /* AUTH & MODALS */
+      #auth-overlay {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        z-index: 2000;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      #qr-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 1500;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+      }
+
+      /* UI MODES */
+      .remote-only {
+        display: none;
+      }
+      body.remote-mode .tv-only {
+        display: none;
+      }
+      body.remote-mode .remote-only {
+        display: block;
+        padding: 15px;
+      }
+
+      header {
+        padding: 10px 15px;
+        background: #222;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px solid var(--accent);
+        height: 60px;
+      }
+      main {
+        display: grid;
+        grid-template-columns: 1.8fr 1.2fr;
+        gap: 15px;
+        padding: 15px;
+        height: calc(100vh - 85px);
+      }
+
+      /* PLAYER & REACTIONS */
+      #player-container {
+        width: 100%;
+        aspect-ratio: 16/9;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      .floating-emoji {
+        position: absolute;
+        bottom: 10%;
+        font-size: 4rem;
+        animation: floatUp 2s forwards;
+        pointer-events: none;
+      }
+      @keyframes floatUp {
+        from {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateY(-500px);
+          opacity: 0;
+        }
+      }
+
+      /* REMOTE SEARCH & AUTOCOMPLETE */
+      .search-area {
+        position: relative;
+        width: 100%;
+      }
+      #query {
+        width: 100%;
+        padding: 12px;
+        border-radius: 25px;
+        border: none;
+        background: #000;
+        color: white;
+        box-sizing: border-box;
+      }
+      #autocomplete-results {
+        position: absolute;
+        top: 50px;
+        width: 100%;
+        background: #333;
+        z-index: 1000;
+        border-radius: 10px;
+      }
+      .suggestion {
+        padding: 12px;
+        border-bottom: 1px solid #444;
+        cursor: pointer;
+      }
+
+      #results {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-top: 15px;
+      }
+      .result-item {
+        background: #333;
+        border-radius: 8px;
+        overflow: hidden;
+        cursor: pointer;
+      }
+      .result-item img {
+        width: 100%;
+        display: block;
+      }
+
+      .btn-group {
+        display: flex;
+        justify-content: space-around;
+        background: #222;
+        padding: 15px;
+        border-radius: 15px;
+        margin-top: 15px;
+      }
+      button {
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="auth-overlay">
+      <h2 style="color: var(--accent)">KAKAOK REMOTE</h2>
+      <input type="password" id="passInput" placeholder="Syötä koodi (1234)" />
+      <button
+        onclick="verifyPassword()"
+        style="
+          padding: 10px 30px;
+          background: var(--accent);
+          color: white;
+          border: none;
+          border-radius: 20px;
+        "
+      >
+        YHDISTÄ
+      </button>
+    </div>
+
+    <header>
+      <h2 style="margin: 0; color: var(--accent)">KAKAOK-TV</h2>
+      <div
+        class="tv-only"
+        onclick="toggleQR()"
+        style="
+          background: white;
+          padding: 5px;
+          border-radius: 5px;
+          cursor: pointer;
+        "
+      >
+        <div id="qrcode-small"></div>
+      </div>
+    </header>
+
+    <main class="tv-only">
+      <section>
+        <div id="player-container"><div id="player"></div></div>
+        <h3 id="currentTitle" style="margin-top: 15px">
+          Odota, että joku valitsee biisin...
+        </h3>
+      </section>
+      <section
+        style="
+          background: var(--card);
+          border-radius: 12px;
+          padding: 15px;
+          overflow-y: auto;
+        "
+      >
+        <h4 style="margin: 0; color: var(--accent)">SOITTOJONO</h4>
+        <div id="queueList"></div>
+      </section>
+    </main>
+
+    <div class="remote-only">
+      <div class="search-area">
+        <input
+          type="text"
+          id="query"
+          placeholder="Hae biisiä..."
+          oninput="getSuggestions(this.value)"
+        />
+        <div id="autocomplete-results"></div>
+      </div>
+      <div id="results"></div>
+
+      <div class="btn-group">
+        <button
+          onclick="sendEmoji('🔥')"
+          style="font-size: 2rem; background: none; border: none"
+        >
+          🔥
+        </button>
+        <button
+          onclick="sendEmoji('👏')"
+          style="font-size: 2rem; background: none; border: none"
+        >
+          👏
+        </button>
+        <button
+          onclick="sendEmoji('❤️')"
+          style="font-size: 2rem; background: none; border: none"
+        >
+          ❤️
+        </button>
+      </div>
+
+      <div class="btn-group">
+        <button
+          onclick="control('pause')"
+          style="
+            color: white;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+          "
+        >
+          ⏸
+        </button>
+        <button
+          onclick="control('play')"
+          style="
+            color: white;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+          "
+        >
+          ▶
+        </button>
+        <button
+          onclick="control('skip')"
+          style="
+            color: var(--accent);
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            font-weight: bold;
+          "
+        >
+          SKIP ⏭
+        </button>
+      </div>
+    </div>
+
+    <div id="qr-modal" onclick="toggleQR()">
+      <div
+        style="background: white; padding: 20px; border-radius: 15px"
+        id="qrcode-large"
+      ></div>
+    </div>
+
+    <script>
+      const socket = io();
+      const API_KEY = "AIzaSyC2h6LOaYjMXDLldgPgdDrsFVKzfsrRig0";
+      let playlist = [];
+      var player;
+      const isRemote =
+        new URLSearchParams(window.location.search).get("remote") === "true";
+
+      window.onload = () => {
+        if (isRemote) {
+          document.body.classList.add("remote-mode");
+          document.getElementById("auth-overlay").style.display = "flex";
+        } else {
+          const remoteUrl = window.location.href.split("?")[0] + "?remote=true";
+          const qrImg = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(remoteUrl)}`;
+          document.getElementById("qrcode-small").innerHTML =
+            `<img src="${qrImg}&size=45x45">`;
+          document.getElementById("qrcode-large").innerHTML =
+            `<img src="${qrImg}&size=300x300">`;
+        }
+      };
+
+      function toggleQR() {
+        const m = document.getElementById("qr-modal");
+        m.style.display = m.style.display === "flex" ? "none" : "flex";
+      }
+
+      // --- SOCKET LOGIIKKA ---
+      function verifyPassword() {
+        socket.emit("check_password", {
+          password: document.getElementById("passInput").value,
+        });
+      }
+      socket.on("password_result", (data) => {
+        if (data.success)
+          document.getElementById("auth-overlay").style.display = "none";
+        else alert("Väärä koodi!");
+      });
+
+      function sendEmoji(emoji) {
+        socket.emit("send_reaction", { emoji });
+      }
+      socket.on("show_reaction", (data) => {
+        if (!isRemote) {
+          const e = document.createElement("div");
+          e.className = "floating-emoji";
+          e.innerText = data.emoji;
+          e.style.left = Math.random() * 80 + 10 + "%";
+          document.body.appendChild(e);
+          setTimeout(() => e.remove(), 2000);
+        }
+      });
+
+      function control(action) {
+        socket.emit("remote_control", { action });
+      }
+      socket.on("execute_control", (data) => {
+        if (!isRemote && player) {
+          if (data.action === "pause") player.pauseVideo();
+          if (data.action === "play") player.playVideo();
+          if (data.action === "skip") playNext();
+        }
+      });
+
+      // --- HAKU JA JONO ---
+      async function getSuggestions(val) {
+        if (val.length < 3) return;
+        const r = await fetch(
+          `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(val + " karaoke")}`,
+        );
+        const d = await r.json();
+        document.getElementById("autocomplete-results").innerHTML = d[1]
+          .slice(0, 5)
+          .map(
+            (s) =>
+              `<div class="suggestion" onclick="doSearch('${s}')">${s}</div>`,
+          )
+          .join("");
+      }
+
+      function doSearch(v) {
+        document.getElementById("autocomplete-results").innerHTML = "";
+        document.getElementById("query").value = v;
+        searchYoutube(v);
+      }
+
+      async function searchYoutube(q) {
+        const r = await fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=4&q=${encodeURIComponent(q)}&type=video&key=${API_KEY}`,
+        );
+        const d = await r.json();
+        document.getElementById("results").innerHTML = d.items
+          .map(
+            (i) => `
+            <div class="result-item" onclick="socket.emit('add_to_queue', {id:'${i.id.videoId}', title:'${i.snippet.title.replace(/'/g, "")}'})">
+                <img src="${i.snippet.thumbnails.medium.url}">
+                <p style="font-size:10px; padding:5px; margin:0;">${i.snippet.title}</p>
+            </div>
+        `,
+          )
+          .join("");
+      }
+
+      socket.on("queue_updated", (data) => {
+        playlist.push(data);
+        if (!isRemote) {
+          updateUI();
+          if (
+            player &&
+            player.getPlayerState() !== 1 &&
+            player.getPlayerState() !== 3
+          )
+            playNext();
+        }
+      });
+
+      function playNext() {
+        if (playlist.length > 0) {
+          const next = playlist.shift();
+          player.loadVideoById(next.id);
+          document.getElementById("currentTitle").innerText =
+            "NYT SOI: " + next.title;
+        }
+        updateUI();
+      }
+
+      function updateUI() {
+        const list = document.getElementById("queueList");
+        if (list)
+          list.innerHTML = playlist
+            .map(
+              (i) =>
+                `<div style="padding:10px; border-bottom:1px solid #333;">${i.title}</div>`,
+            )
+            .join("");
+      }
+
+      // --- YT API ---
+      if (!isRemote) {
+        var tag = document.createElement("script");
+        tag.src = "https://www.youtube.com/iframe_api";
+        document.body.appendChild(tag);
+      }
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player("player", {
+          height: "100%",
+          width: "100%",
+          videoId: "",
+          playerVars: { autoplay: 1, enablejsapi: 1 },
+          events: {
+            onStateChange: (e) => {
+              if (e.data === YT.PlayerState.ENDED) playNext();
+            },
+          },
+        });
+      }
+    </script>
+  </body>
 </html>
