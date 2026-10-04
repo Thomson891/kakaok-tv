@@ -20,7 +20,7 @@
         overflow-x: hidden;
       }
 
-      /* AUTH & MODALS */
+      /* AUTH */
       #auth-overlay {
         position: fixed;
         inset: 0;
@@ -31,28 +31,6 @@
         align-items: center;
         justify-content: center;
       }
-      #qr-modal {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.9);
-        z-index: 1500;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-      }
-
-      /* UI MODES */
-      .remote-only {
-        display: none;
-      }
-      body.remote-mode .tv-only {
-        display: none;
-      }
-      body.remote-mode .remote-only {
-        display: block;
-        padding: 15px;
-      }
 
       header {
         padding: 10px 15px;
@@ -62,13 +40,34 @@
         align-items: center;
         border-bottom: 2px solid var(--accent);
         height: 60px;
+        box-sizing: border-box;
       }
+
       main {
         display: grid;
         grid-template-columns: 1.8fr 1.2fr;
         gap: 15px;
         padding: 15px;
-        height: calc(100vh - 85px);
+        min-height: calc(100vh - 60px);
+        box-sizing: border-box;
+      }
+
+      @media (max-width: 900px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .side-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .card-section {
+        background: var(--card);
+        border-radius: 12px;
+        padding: 15px;
       }
 
       /* PLAYER & REACTIONS */
@@ -97,32 +96,28 @@
         }
       }
 
-      /* REMOTE SEARCH & AUTOCOMPLETE */
+      /* SEARCH */
       .search-area {
-        position: relative;
+        display: flex;
+        gap: 8px;
         width: 100%;
       }
       #query {
-        width: 100%;
+        flex: 1;
         padding: 12px;
         border-radius: 25px;
-        border: none;
+        border: 1px solid #333;
         background: #000;
         color: white;
         box-sizing: border-box;
       }
-      #autocomplete-results {
-        position: absolute;
-        top: 50px;
-        width: 100%;
-        background: #333;
-        z-index: 1000;
-        border-radius: 10px;
-      }
-      .suggestion {
-        padding: 12px;
-        border-bottom: 1px solid #444;
-        cursor: pointer;
+      .search-btn {
+        padding: 10px 20px;
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: 20px;
+        font-weight: bold;
       }
 
       #results {
@@ -136,6 +131,9 @@
         border-radius: 8px;
         overflow: hidden;
         cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        display: block;
       }
       .result-item img {
         width: 100%;
@@ -146,9 +144,12 @@
         display: flex;
         justify-content: space-around;
         background: #222;
-        padding: 15px;
+        padding: 10px;
         border-radius: 15px;
-        margin-top: 15px;
+        margin-top: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 5px;
       }
       button {
         cursor: pointer;
@@ -158,7 +159,7 @@
   <body>
     <div id="auth-overlay">
       <h2 style="color: var(--accent)">KAKAOK REMOTE</h2>
-      <input type="password" id="passInput" placeholder="Syötä koodi (1234)" />
+      <input type="password" id="passInput" placeholder="Sy&ouml;t&auml; koodi (1234)" />
       <button
         onclick="verifyPassword()"
         style="
@@ -167,269 +168,349 @@
           color: white;
           border: none;
           border-radius: 20px;
+          margin-top: 10px;
         "
       >
-        YHDISTÄ
+        YHDIST&Auml;
       </button>
     </div>
 
     <header>
       <h2 style="margin: 0; color: var(--accent)">KAKAOK-TV</h2>
-      <div
-        class="tv-only"
-        onclick="toggleQR()"
-        style="
-          background: white;
-          padding: 5px;
-          border-radius: 5px;
-          cursor: pointer;
-        "
-      >
-        <div id="qrcode-small"></div>
-      </div>
     </header>
 
-    <main class="tv-only">
+    <main>
       <section>
         <div id="player-container"><div id="player"></div></div>
         <h3 id="currentTitle" style="margin-top: 15px">
-          Odota, että joku valitsee biisin...
+          Odota, ett&auml; joku valitsee biisin...
         </h3>
+
+        <div class="btn-group">
+          <button
+            onclick="sendEmoji('\uD83D\uDD25')"
+            style="font-size: 2rem; background: none; border: none"
+          >
+            &#x1F525;
+          </button>
+          <button
+            onclick="sendEmoji('\uD83D\uDC4F')"
+            style="font-size: 2rem; background: none; border: none"
+          >
+            &#x1F44F;
+          </button>
+          <button
+            onclick="sendEmoji('\u2764\uFE0F')"
+            style="font-size: 2rem; background: none; border: none"
+          >
+            &#x2764;&#xFE0F;
+          </button>
+        </div>
+
+        <div class="btn-group">
+          <button
+            onclick="control('play')"
+            style="
+              color: white;
+              background: none;
+              border: none;
+              font-size: 1.5rem;
+            "
+            title="Toista"
+          >
+            &#x25B6;
+          </button>
+          <button
+            onclick="control('pause')"
+            style="
+              color: white;
+              background: none;
+              border: none;
+              font-size: 1.5rem;
+            "
+            title="Tauko"
+          >
+            &#x23F8;
+          </button>
+          <button
+            onclick="control('stop')"
+            style="
+              color: white;
+              background: none;
+              border: none;
+              font-size: 1.5rem;
+            "
+            title="Pys&auml;yt&auml;"
+          >
+            &#x23F9;
+          </button>
+          <button
+            onclick="control('skip')"
+            style="
+              color: var(--accent);
+              background: none;
+              border: none;
+              font-size: 1.2rem;
+              font-weight: bold;
+            "
+            title="Ohita"
+          >
+            SKIP &#x23ED;
+          </button>
+          <button
+            onclick="control('volDown')"
+            style="
+              color: white;
+              background: none;
+              border: none;
+              font-size: 1.2rem;
+              font-weight: bold;
+            "
+            title="Pienemm&auml;lle"
+          >
+            &#x1F509; -
+          </button>
+          <button
+            onclick="control('volUp')"
+            style="
+              color: white;
+              background: none;
+              border: none;
+              font-size: 1.2rem;
+              font-weight: bold;
+            "
+            title="Suuremmalle"
+          >
+            &#x1F50A; +
+          </button>
+          <button
+            onclick="control('mute')"
+            style="
+              color: white;
+              background: none;
+              border: none;
+              font-size: 1.2rem;
+            "
+            title="Mykist&auml; / Poista mykistys"
+          >
+            &#x1F507;
+          </button>
+        </div>
       </section>
-      <section
-        style="
-          background: var(--card);
-          border-radius: 12px;
-          padding: 15px;
-          overflow-y: auto;
-        "
-      >
-        <h4 style="margin: 0; color: var(--accent)">SOITTOJONO</h4>
-        <div id="queueList"></div>
-      </section>
+
+      <div class="side-panel">
+        <section class="card-section">
+          <h4 style="margin: 0 0 10px 0; color: var(--accent)">HAE KAPPALEITA</h4>
+          <div class="search-area">
+            <input
+              type="text"
+              id="query"
+              placeholder="Hae biisi&auml; ja paina Enter..."
+              onkeydown="if(event.key === 'Enter') handleSearch()"
+            />
+            <button class="search-btn" onclick="handleSearch()">HAE</button>
+          </div>
+          <div id="results"></div>
+        </section>
+
+        <section class="card-section" style="flex: 1; overflow-y: auto;">
+          <h4 style="margin: 0 0 10px 0; color: var(--accent)">SOITTOJONO</h4>
+          <div id="queueList"></div>
+        </section>
+      </div>
     </main>
 
-    <div class="remote-only">
-      <div class="search-area">
-        <input
-          type="text"
-          id="query"
-          placeholder="Hae biisiä..."
-          oninput="getSuggestions(this.value)"
-        />
-        <div id="autocomplete-results"></div>
-      </div>
-      <div id="results"></div>
-
-      <div class="btn-group">
-        <button
-          onclick="sendEmoji('🔥')"
-          style="font-size: 2rem; background: none; border: none"
-        >
-          🔥
-        </button>
-        <button
-          onclick="sendEmoji('👏')"
-          style="font-size: 2rem; background: none; border: none"
-        >
-          👏
-        </button>
-        <button
-          onclick="sendEmoji('❤️')"
-          style="font-size: 2rem; background: none; border: none"
-        >
-          ❤️
-        </button>
-      </div>
-
-      <div class="btn-group">
-        <button
-          onclick="control('pause')"
-          style="
-            color: white;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-          "
-        >
-          ⏸
-        </button>
-        <button
-          onclick="control('play')"
-          style="
-            color: white;
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-          "
-        >
-          ▶
-        </button>
-        <button
-          onclick="control('skip')"
-          style="
-            color: var(--accent);
-            background: none;
-            border: none;
-            font-size: 1.2rem;
-            font-weight: bold;
-          "
-        >
-          SKIP ⏭
-        </button>
-      </div>
-    </div>
-
-    <div id="qr-modal" onclick="toggleQR()">
-      <div
-        style="background: white; padding: 20px; border-radius: 15px"
-        id="qrcode-large"
-      ></div>
-    </div>
-
     <script>
-      const socket = io();
-      const API_KEY = "AIzaSyC2h6LOaYjMXDLldgPgdDrsFVKzfsrRig0";
+      const socket = typeof io !== 'undefined' ? io() : null;
+      const API_KEY = "AIzaSyAPc4JAiR1ddtdmT6xgp2FA0Eb2R_TjOf0";
       let playlist = [];
       var player;
-      const isRemote =
-        new URLSearchParams(window.location.search).get("remote") === "true";
+      let isPlaying = false;
 
-      window.onload = () => {
-        if (isRemote) {
-          document.body.classList.add("remote-mode");
-          document.getElementById("auth-overlay").style.display = "flex";
-        } else {
-          const remoteUrl = window.location.href.split("?")[0] + "?remote=true";
-          const qrImg = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(remoteUrl)}`;
-          document.getElementById("qrcode-small").innerHTML =
-            `<img src="${qrImg}&size=45x45">`;
-          document.getElementById("qrcode-large").innerHTML =
-            `<img src="${qrImg}&size=300x300">`;
-        }
-      };
-
-      function toggleQR() {
-        const m = document.getElementById("qr-modal");
-        m.style.display = m.style.display === "flex" ? "none" : "flex";
-      }
-
-      // --- SOCKET LOGIIKKA ---
       function verifyPassword() {
-        socket.emit("check_password", {
-          password: document.getElementById("passInput").value,
-        });
+        if (socket) {
+          socket.emit("check_password", {
+            password: document.getElementById("passInput").value,
+          });
+        }
       }
-      socket.on("password_result", (data) => {
-        if (data.success)
-          document.getElementById("auth-overlay").style.display = "none";
-        else alert("Väärä koodi!");
-      });
 
       function sendEmoji(emoji) {
-        socket.emit("send_reaction", { emoji });
-      }
-      socket.on("show_reaction", (data) => {
-        if (!isRemote) {
-          const e = document.createElement("div");
-          e.className = "floating-emoji";
-          e.innerText = data.emoji;
-          e.style.left = Math.random() * 80 + 10 + "%";
-          document.body.appendChild(e);
-          setTimeout(() => e.remove(), 2000);
+        if (socket) {
+          socket.emit("send_reaction", { emoji });
+        } else {
+          showEmoji(emoji);
         }
-      });
+      }
+
+      function showEmoji(emoji) {
+        const e = document.createElement("div");
+        e.className = "floating-emoji";
+        e.innerText = emoji;
+        e.style.left = Math.random() * 80 + 10 + "%";
+        document.body.appendChild(e);
+        setTimeout(() => e.remove(), 2000);
+      }
 
       function control(action) {
-        socket.emit("remote_control", { action });
-      }
-      socket.on("execute_control", (data) => {
-        if (!isRemote && player) {
-          if (data.action === "pause") player.pauseVideo();
-          if (data.action === "play") player.playVideo();
-          if (data.action === "skip") playNext();
+        if (socket) {
+          socket.emit("remote_control", { action });
+        } else {
+          executeControl(action);
         }
-      });
-
-      // --- HAKU JA JONO ---
-      async function getSuggestions(val) {
-        if (val.length < 3) return;
-        const r = await fetch(
-          `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(val + " karaoke")}`,
-        );
-        const d = await r.json();
-        document.getElementById("autocomplete-results").innerHTML = d[1]
-          .slice(0, 5)
-          .map(
-            (s) =>
-              `<div class="suggestion" onclick="doSearch('${s}')">${s}</div>`,
-          )
-          .join("");
       }
 
-      function doSearch(v) {
-        document.getElementById("autocomplete-results").innerHTML = "";
-        document.getElementById("query").value = v;
-        searchYoutube(v);
+      function executeControl(action) {
+        if (player) {
+          if (action === "pause" && typeof player.pauseVideo === 'function') player.pauseVideo();
+          if (action === "play" && typeof player.playVideo === 'function') player.playVideo();
+          if (action === "stop" && typeof player.stopVideo === 'function') {
+            player.stopVideo();
+            isPlaying = false;
+            document.getElementById("currentTitle").textContent = "Pys\u00E4ytetty";
+          }
+          if (action === "skip") playNext();
+          if (action === "volUp" && typeof player.getVolume === 'function') {
+            const currentVol = player.getVolume();
+            player.setVolume(Math.min(currentVol + 10, 100));
+          }
+          if (action === "volDown" && typeof player.getVolume === 'function') {
+            const currentVol = player.getVolume();
+            player.setVolume(Math.max(currentVol - 10, 0));
+          }
+          if (action === "mute" && typeof player.isMuted === 'function') {
+            if (player.isMuted()) {
+              player.unMute();
+            } else {
+              player.mute();
+            }
+          }
+        }
+      }
+
+      function handleSearch() {
+        const q = document.getElementById("query").value.trim();
+        if (q.length > 0) {
+          searchYoutube(q + " karaoke");
+        }
+      }
+
+      function decodeHTMLEntities(text) {
+        const textArea = document.createElement('textarea');
+        textArea.innerHTML = text;
+        return textArea.value;
       }
 
       async function searchYoutube(q) {
-        const r = await fetch(
-          `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=4&q=${encodeURIComponent(q)}&type=video&key=${API_KEY}`,
-        );
-        const d = await r.json();
-        document.getElementById("results").innerHTML = d.items
-          .map(
-            (i) => `
-            <div class="result-item" onclick="socket.emit('add_to_queue', {id:'${i.id.videoId}', title:'${i.snippet.title.replace(/'/g, "")}'})">
-                <img src="${i.snippet.thumbnails.medium.url}">
-                <p style="font-size:10px; padding:5px; margin:0;">${i.snippet.title}</p>
-            </div>
-        `,
-          )
-          .join("");
+        const resultsContainer = document.getElementById("results");
+        resultsContainer.innerHTML = "<p style='grid-column: 1 / -1;'>Haetaan...</p>";
+
+        try {
+          const r = await fetch(
+            `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=4&q=${encodeURIComponent(q)}&type=video&key=${API_KEY}`,
+          );
+          const d = await r.json();
+
+          if (d.error) {
+            resultsContainer.innerHTML = `<p style="color:var(--accent); grid-column: 1 / -1;">Hakuvirhe: ${d.error.message}</p>`;
+            return;
+          }
+
+          if (!d.items || d.items.length === 0) {
+            resultsContainer.innerHTML = "<p style='grid-column: 1 / -1;'>Ei hakutuloksia.</p>";
+            return;
+          }
+
+          resultsContainer.innerHTML = "";
+          d.items.forEach((item) => {
+            const cleanTitle = decodeHTMLEntities(item.snippet.title);
+            const card = document.createElement("div");
+            card.className = "result-item";
+
+            const img = document.createElement("img");
+            img.src = item.snippet.thumbnails.medium.url;
+
+            const title = document.createElement("p");
+            title.style.cssText = "font-size:10px; padding:5px; margin:0;";
+            title.textContent = cleanTitle;
+
+            card.appendChild(img);
+            card.appendChild(title);
+
+            card.onclick = () => {
+              addToQueue({
+                id: item.id.videoId,
+                title: cleanTitle
+              });
+            };
+
+            resultsContainer.appendChild(card);
+          });
+        } catch (err) {
+          console.error("Hakuvirhe:", err);
+          resultsContainer.innerHTML = "<p style='color:var(--accent); grid-column: 1 / -1;'>Verkkovirhe haettaessa tuloksia.</p>";
+        }
       }
 
-      socket.on("queue_updated", (data) => {
-        playlist.push(data);
-        if (!isRemote) {
-          updateUI();
-          if (
-            player &&
-            player.getPlayerState() !== 1 &&
-            player.getPlayerState() !== 3
-          )
-            playNext();
+      function addToQueue(data) {
+        if (socket && socket.connected) {
+          socket.emit("add_to_queue", data);
+        } else {
+          handleQueueItem(data);
         }
-      });
+      }
+
+      function handleQueueItem(data) {
+        playlist.push(data);
+        updateUI();
+        if (!isPlaying) {
+          playNext();
+        }
+      }
+
+      if (socket) {
+        socket.on("password_result", (data) => {
+          if (data.success) document.getElementById("auth-overlay").style.display = "none";
+          else alert("V\u00E4\u00E4r\u00E4 koodi!");
+        });
+        socket.on("show_reaction", (data) => showEmoji(data.emoji));
+        socket.on("execute_control", (data) => executeControl(data.action));
+        socket.on("queue_updated", (data) => handleQueueItem(data));
+      }
 
       function playNext() {
         if (playlist.length > 0) {
+          isPlaying = true;
           const next = playlist.shift();
-          player.loadVideoById(next.id);
-          document.getElementById("currentTitle").innerText =
+          if (player && typeof player.loadVideoById === 'function') {
+            player.loadVideoById(next.id);
+          }
+          document.getElementById("currentTitle").textContent =
             "NYT SOI: " + next.title;
+        } else {
+          isPlaying = false;
         }
         updateUI();
       }
 
       function updateUI() {
         const list = document.getElementById("queueList");
-        if (list)
-          list.innerHTML = playlist
-            .map(
-              (i) =>
-                `<div style="padding:10px; border-bottom:1px solid #333;">${i.title}</div>`,
-            )
-            .join("");
+        if (list) {
+          list.innerHTML = "";
+          playlist.forEach((i) => {
+            const itemDiv = document.createElement("div");
+            itemDiv.style.cssText = "padding:10px; border-bottom:1px solid #333;";
+            itemDiv.textContent = i.title;
+            list.appendChild(itemDiv);
+          });
+        }
       }
 
       // --- YT API ---
-      if (!isRemote) {
-        var tag = document.createElement("script");
-        tag.src = "https://www.youtube.com/iframe_api";
-        document.body.appendChild(tag);
-      }
+      var tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.body.appendChild(tag);
+
       function onYouTubeIframeAPIReady() {
         player = new YT.Player("player", {
           height: "100%",
@@ -437,6 +518,11 @@
           videoId: "",
           playerVars: { autoplay: 1, enablejsapi: 1 },
           events: {
+            onReady: () => {
+              if (playlist.length > 0 && !isPlaying) {
+                playNext();
+              }
+            },
             onStateChange: (e) => {
               if (e.data === YT.PlayerState.ENDED) playNext();
             },
