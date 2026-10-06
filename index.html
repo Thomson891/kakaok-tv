@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KAKAOK-TV v0.8.2</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="config.js"></script>
     <style>
       :root {
         --bg: #0f0f0f;
@@ -322,7 +323,7 @@
 
     <script>
       const socket = typeof io !== 'undefined' ? io() : null;
-      const API_KEY = "AIzaSyAPc4JAiR1ddtdmT6xgp2FA0Eb2R_TjOf0";
+      const API_KEY = typeof CONFIG !== 'undefined' ? CONFIG.API_KEY : "";
       let playlist = [];
       var player;
       let isPlaying = false;
@@ -499,7 +500,7 @@
           list.innerHTML = "";
           playlist.forEach((i) => {
             const itemDiv = document.createElement("div");
-            itemDiv.style.cssText = "padding:10px; border-bottom:1px solid #333;";
+            itemDiv.style.styleText = "padding:10px; border-bottom:1px solid #333;";
             itemDiv.textContent = i.title;
             list.appendChild(itemDiv);
           });

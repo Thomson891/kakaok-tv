@@ -1,0 +1,3 @@
+const CONFIG = {
+  API_KEY: "TÄHÄN_OMA_YOUTUBE_API_AVAIN"
+};
